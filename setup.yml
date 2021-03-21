@@ -1,0 +1,98 @@
+- name: configure hadoop-master node
+  hosts: Namenode
+  vars_prompt:
+    - name: mas_dir
+      prompt: "Enter your directory whatever you want to share at namenode "
+      private: no
+    - name: had_port
+      prompt: "Tell the port number where you want to run hadoop service "
+      private: no
+  tasks:
+  - debug:
+     msg: "Master is {{ groups['Namenode'][0] }}"
+  - debug:
+     msg: "datanodes are {{ groups['Datanode'] }}"
+  - name: "Transfer the jdk software"
+    copy:
+     src: "/root/jdk-8u221-linux-x64.rpm"
+     dest: "/root/"
+  - name: "Transfer the hadoop software"
+    copy: 
+     src: "/root/hadoop-1.2.1-1.x86_64.rpm"
+     dest: "/root/"
+  - name: "installing the jdk at namenode"
+    command: "rpm -ivh /root/jdk-8u221-linux-x64.rpm"
+    ignore_errors:  yes
+    register: x
+  - name: "installing the hadoop software at namenode"
+    command: "rpm -ivh /root/hadoop-1.2.1-1.x86_64.rpm --force"
+    register: y
+  - name: "creating sharable directory of namenode"
+    file:
+      dest: "{{ mas_dir }}"
+      state: directory
+  - name: "configure hdfs file of namenode "
+    template:
+     src: "hdfs-site.xml"
+     dest: "/etc/hadoop/hdfs-site.xml"
+  - name: "configure core file of namenode"
+    template:
+     src: "core-site.xml"
+     dest: "/etc/hadoop/core-site.xml"
+  - name: "formating the sharable directory of master node"
+    shell: "echo Y | hadoop namenode -format"
+  - name: "starting the hadoop service of namenode"
+    command: "hadoop-daemon.sh start namenode"
+
+
+
+- name: configure hadoop-datanode node
+  hosts: Datanode
+  vars_prompt:
+    - name: dat_dir
+      prompt: "Enter your directory whatever you want to share of datanode "
+      private: no
+    - name: had_port
+      prompt: "Tell the port number where you want to run hadoop service "
+      private: no
+  tasks:
+  - name: "Transfer the jdk software"
+    copy:
+     src: "/root/jdk-8u221-linux-x64.rpm"
+     dest: "/root/"
+  - name: "Transfer the hadoop software"
+    copy: 
+     src: "/root/hadoop-1.2.1-1.x86_64.rpm"
+     dest: "/root/"
+  - name: "installing the jdk at datanode"
+    command: "rpm -ivh /root/jdk-8u221-linux-x64.rpm"
+    ignore_errors:  yes
+  - name: "installing the hadoop software at datanode"
+    command: "rpm -ivh /root/hadoop-1.2.1-1.x86_64.rpm --force"
+  - name: "creating sharable directory of namenode"
+    file:
+      dest: "{{ dat_dir }}"
+      state: directory
+  - name: "configure hdfs file of datanode"
+    template:
+     src: "hdfs-site.xml.j2"
+     dest: "/etc/hadoop/hdfs-site.xml"
+  - name: "configure core file of datanode"
+    template:
+     src: "core-site.xml"
+     dest: "/etc/hadoop/core-site.xml"  
+  - name: "starting datanode service"
+    command: "hadoop-daemon.sh start datanode"
+
+- name: checking the setup
+  hosts: Namenode
+  tasks:
+  - name: "checking the hadoop service"
+    command: "jps"
+  - name: "check the hadoop cluster reports"
+    command: "hadoop dfsadmin -report"
+    register: r
+  - debug:
+     msg: "{{ r }}"
+  
+
